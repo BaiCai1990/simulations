@@ -9,7 +9,7 @@ classdef Imc_cell < handle
     end
     
     properties
-        obs_occ, obs_free; 
+        obs_occ, obs_free;
         release; % occupied -> free
         entry; % free -> occupied
         last_obs;
@@ -44,23 +44,23 @@ classdef Imc_cell < handle
             end
             
             % recency weightning
-%             if yt == obj.OCCUPIED
-%                 % update active state
-%                 if obj.obs_occ > obj.max_N
-%                     obj.release = obj.release * obj.max_N / obj.obs_occ;
-%                 end
-%                 % update inactive state
-%                 obj.entry = 1 + (obj.entry - 1) * obj.recency_weightning;
-%                 obj.obs_free = 1 + (obj.obs_free - 1) * obj.recency_weightning;
-%             else
-%                 % update active state
-%                 if obj.obs_free > obj.max_N
-%                     obj.entry = obj.entry * obj.max_N / obj.obs_free;
-%                 end
-%                 % update inactive state
-%                 obj.release = 1 + (obj.release - 1) * obj.recency_weightning;
-%                 obj.obs_occ = 1 + (obj.obs_occ - 1) * obj.recency_weightning;
-%             end
+            if yt == obj.OCCUPIED
+                % update active state
+                if obj.obs_occ > obj.max_N
+                    obj.release = obj.release * obj.max_N / obj.obs_occ;
+                end
+                % update inactive state
+                obj.entry = 1 + (obj.entry - 1) * obj.recency_weightning;
+                obj.obs_free = 1 + (obj.obs_free - 1) * obj.recency_weightning;
+            else
+                % update active state
+                if obj.obs_free > obj.max_N
+                    obj.entry = obj.entry * obj.max_N / obj.obs_free;
+                end
+                % update inactive state
+                obj.release = 1 + (obj.release - 1) * obj.recency_weightning;
+                obj.obs_occ = 1 + (obj.obs_occ - 1) * obj.recency_weightning;
+            end
             
             obj.unknown_since_last_obs = 0;
             
@@ -73,18 +73,20 @@ classdef Imc_cell < handle
             lambda_exit = (obj.release + 1) / (obj.obs_occ + 1);
             
             % correct for using mobile observer
-%            lambda_exit = sqrt(4*lambda_exit + 1) / 2 - 0.5;            
-%             lambda_entry = -(lambda_exit * lambda_entry) / (lambda_entry - lambda_exit);
-%             
-%             if lambda_exit < 0 || lambda_entry < 0
-%                 lambda_entry = (obj.entry + 1) / (obj.obs_occ + 1);
-%                 lambda_exit = (obj.release + 1) / (obj.obs_free + 1);
-%                 disp('underflow');
-%             elseif lambda_exit > 1 || lambda_entry > 1
-%                 lambda_entry = (obj.entry + 1) / (obj.obs_occ + 1);
-%                 lambda_exit = (obj.release + 1) / (obj.obs_free + 1);
-%                 disp('overflow');
-%             end
+            %             if (obj.obs_free + obj.obs_occ) > obj.no_of_initial_statistics_updates
+            %                 lambda_exit = sqrt(4*lambda_exit + 1) / 2 - 0.5;
+            %                 lambda_entry = -(lambda_exit * lambda_entry) / (lambda_entry - lambda_exit);
+            %
+            %                 if lambda_exit < 0 || lambda_entry < 0
+            % %                     lambda_entry = (obj.entry + 1) / (obj.obs_free + 1);
+            % %                     lambda_exit = (obj.release + 1) / (obj.obs_occ + 1);
+            %                     disp('underflow');
+            %                 elseif lambda_exit > 1 || lambda_entry > 1
+            % %                     lambda_entry = (obj.entry + 1) / (obj.obs_free + 1);
+            % %                     lambda_exit = (obj.release + 1) / (obj.obs_occ + 1);
+            %                     disp('overflow');
+            %                 end
+            %             end
             a(1:2,1:2) = [1-lambda_exit, lambda_exit; lambda_entry, 1-lambda_entry];
         end
         
