@@ -15,7 +15,7 @@ robotStepSize = 1;
 
 % Obstacles
 obstacle1 = [2,0.9,0.2]; % pos, free->occ, occ->free
-obstacle2 = [3,0.45,0.5]; 
+obstacle2 = [3,0.45,0.5];
 
 obstacles = [obstacle1; obstacle2];
 
@@ -36,13 +36,13 @@ a_data_imac(1:N,1:2,1:2) = -1;
 q_data(1:N,1:Hmm_EM_cell.N) = -1;
 obstacle_number_to_evaluate = 1;
 occupied_count(1:L) = 0;
-outcomes(1:N,1:L) = 0; 
+outcomes(1:N,1:L) = 0;
 times = 1:N;
 %%
 % simulation of robot movements
 for t= times
-   % Update obstacles
-   for i=1:size(obstacles,1)
+    % Update obstacles
+    for i=1:size(obstacles,1)
         if(obstacles(i,1) ~= robot)
             % Sample Bernoulli random variable
             switch_now = binornd(1,obstacles(i,map(obstacles(i,1))+2));
@@ -50,62 +50,62 @@ for t= times
                 map(obstacles(i,1)) = xor(map(obstacles(i,1)),1);
             end
             % same as this
-%             rn = rand(1);
-%             if(rn <= obstacles(i,map(obstacles(i,1))+2))
-%                 map(obstacles(i,1)) = xor(map(obstacles(i,1)),1);
-%             end        
+            %             rn = rand(1);
+            %             if(rn <= obstacles(i,map(obstacles(i,1))+2))
+            %                 map(obstacles(i,1)) = xor(map(obstacles(i,1)),1);
+            %             end
         end
-   end
-   outcomes(t,:) = map;
-   % count no. of occ. and free to use for groud truth
-   for i=1:L
-      occupied_count(i) = occupied_count(i) + map(i);
-   end
+    end
+    outcomes(t,:) = map;
+    % count no. of occ. and free to use for groud truth
+    for i=1:L
+        occupied_count(i) = occupied_count(i) + map(i);
+    end
     
-   % Take measurement
-   scanResult(1:L) = -1; % -1 = Unseen, 0 = Free, 1 = Occupied  
-   
-   for z=1:range;
-       index = z+robot;
-       while index > L
-           index = index - L;
-       end
-       if(map(index)==0)
-          scanResult(index) = 0; 
-       else
-           scanResult(index) = 1;
-           break;
-       end
-   end
-   
-   % Move bot
-   for step=1:robotStepSize
-       %nextRobotPos = mod(robot+step,L+1);
-       nextRobotPos = robot + 1;
-       if nextRobotPos > L
-           nextRobotPos = 1;
-       end
-       % Check for obstacles
-       if(map(nextRobotPos) ~= 1 )
-        robot = nextRobotPos;        
-       else
-           break;
-       end
-   end
+    % Take measurement
+    scanResult(1:L) = -1; % -1 = Unseen, 0 = Free, 1 = Occupied
     
-   % Put scan into method
-   for cell_no=1:size(scanResult,2)
-       hmm_grid(cell_no).update(scanResult(cell_no));
-      if scanResult(cell_no) ~= -1 
-          imac_grid(cell_no).update(scanResult(cell_no));
-      else
-          imac_grid(cell_no).updateProject();
-      end
-   end  
-   %hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a
-    a_data_hmm(t,:,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a;    
+    for z=1:range;
+        index = z+robot;
+        while index > L
+            index = index - L;
+        end
+        if(map(index)==0)
+            scanResult(index) = 0;
+        else
+            scanResult(index) = 1;
+            break;
+        end
+    end
+    
+    % Move bot
+    for step=1:robotStepSize
+        %nextRobotPos = mod(robot+step,L+1);
+        nextRobotPos = robot + 1;
+        if nextRobotPos > L
+            nextRobotPos = 1;
+        end
+        % Check for obstacles
+        if(map(nextRobotPos) ~= 1 )
+            robot = nextRobotPos;
+        else
+            break;
+        end
+    end
+    
+    % Put scan into method
+    for cell_no=1:size(scanResult,2)
+        hmm_grid(cell_no).update(scanResult(cell_no));
+        if scanResult(cell_no) ~= -1
+            imac_grid(cell_no).update(scanResult(cell_no));
+        else
+            imac_grid(cell_no).updateProject();
+        end
+    end
+    %hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a
+    a_data_hmm(t,:,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a;
     a_data_imac(t,:,:) = imac_grid(obstacles(obstacle_number_to_evaluate,1)).getTransitionMatrix();
-    q_data(t,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).q;     
+    q_data(t,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).q;
 end
 
 %% Display learning results
@@ -147,9 +147,9 @@ plot([times(Imc_cell.no_of_initial_statistics_updates) times(end)], [obstacles(o
 hold off;
 ylim([0 1]);
 
-figure('name','State probabilites')
-subplot(1,2,1),plot(times(1:10:end), q_data(1:10:end,1)); title('p(free)'); ylim([0 1]);
-subplot(1,2,2),plot(times(1:10:end), q_data(1:10:end,2)); title('p(occupied)'); ylim([0 1]);
+% figure('name','State probabilites')
+% subplot(1,2,1),plot(times(1:10:end), q_data(1:10:end,1)); title('p(free)'); ylim([0 1]);
+% subplot(1,2,2),plot(times(1:10:end), q_data(1:10:end,2)); title('p(occupied)'); ylim([0 1]);
 
 f = figure('name', 'Estimated occupancy probabilities');
 movegui(f,'east');
@@ -161,24 +161,27 @@ for cell_no=1:L
     occupancy_hmm_est(cell_no) =q_est(1);
     q_est = imac_grid(cell_no).longOccupancy();
     occupancy_imac_est(cell_no) = q_est(1);
-    occupancy_groud_truth(cell_no) = occupied_count(cell_no) / N;    
+    occupancy_groud_truth(cell_no) = occupied_count(cell_no) / N;
 end
 
 ideal_long_term(1:L) = 0;
 for i=1:size(obstacles,1)
-    q_est = 1.0 / (obstacles(i,2) + obstacles(i,3)) * [obstacles(i,2)  obstacles(i,3)]
+    q_est = 1.0 / (obstacles(i,2) + obstacles(i,3)) * [obstacles(i,2)  obstacles(i,3)];
     ideal_long_term(obstacles(i,1)) = q_est(1);
 end
 clear q_est;
 
-b_hmm = bar(1:L,occupancy_hmm_est,.95);
+bar(1:L,ideal_long_term,0.95,'FaceColor',[1 0. 0.]);
 hold on
-b_truth = bar(1:L,occupancy_groud_truth,0.75,'FaceColor',[0 1 0])
-b_imac = bar(1:L, occupancy_imac_est,0.5,'FaceColor',[0 0.7 0.7])
-b_long_term = bar(1:L,ideal_long_term,0.25,'FaceColor',[1 0. 0.])
+bar(1:L,occupancy_hmm_est,.75);
+bar(1:L, occupancy_imac_est,0.5,'FaceColor',[0 0.7 0.7]);
+% bar(1:L,occupancy_groud_truth,0.25,'FaceColor',[0 1 0]);
 hold off
- legend(['         HMM'; '  True prob.'; '        IMAC'; 'Static prob.']);
-figure;
-bar([occupancy_hmm_est; occupancy_groud_truth; occupancy_imac_est; ideal_long_term]');
-legend(['         HMM'; '  True prob.'; '        IMAC'; 'Static prob.']);
-histogram(outcomes(:,2))
+legend(['Static prob.';'         HMM'; '        IMAC'], 'location', 'southoutside');
+% figure;
+% bar([ideal_long_term; occupancy_hmm_est; occupancy_imac_est]');
+% legend(['Static prob.';'         HMM'; '        IMAC']);
+
+%% Quatify difference in occupancy maps
+hmm_divergence = kullbackDivergence(ideal_long_term, occupancy_hmm_est)
+imac_divergence = kullbackDivergence(ideal_long_term, occupancy_imac_est)
