@@ -2,7 +2,7 @@
 clear all;
 import Hmm_EM_cell
 import Imc_cell
-L = 3; % Map size
+L = 2; % Map size
 map(1:L) = 0;
 robot = 1;
 
@@ -14,8 +14,8 @@ variance = 0;
 robotStepSize = 1;
 
 % Obstacles
-obstacle1 = [2,0.9,0.2]; % pos, free->occ, occ->free
-obstacle2 = [3,0.45,0.5];
+obstacle1 = [1,0.9,0.2]; % pos, free->occ, occ->free
+obstacle2 = [2,0.45,0.5];
 
 obstacles = [obstacle1; obstacle2];
 
@@ -97,7 +97,7 @@ for t= times
     for cell_no=1:size(scanResult,2)
         hmm_grid(cell_no).update(scanResult(cell_no));
         if scanResult(cell_no) ~= -1
-            imac_grid(cell_no).update(scanResult(cell_no));
+            imac_grid(cell_no).update(scanResult(cell_no), 1);
         else
             imac_grid(cell_no).updateProject();
         end

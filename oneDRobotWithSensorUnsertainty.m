@@ -28,7 +28,7 @@ for cell_no=1:L
     imac_grid(cell_no) = Imc_cell();
 end
 
-N = 5e4;
+N = 2e4;
 
 % store data for visualization of learning progress
 a_data_hmm(1:N,1:Hmm_EM_cell.N,1:Hmm_EM_cell.N) = -1;
@@ -65,7 +65,7 @@ for t= times
     end
     measured_dist = round(normrnd(correct_dist,variance));
     scanResult(1:L) = -1; % -1 = Unseen, 0 = Free, 1 = Occupied
-    if measured_dist > robot + range 
+    if measured_dist > robot + range
         scanResult(robot+1:robot + range) = 0;
     else
         scanResult(robot+1:measured_dist-1) = 0;
@@ -91,13 +91,24 @@ for t= times
     for cell_no=1:size(scanResult,2)
         if cell_no == obstacles(1,1)
             hmm_grid(cell_no).update(scanResult(cell_no));
-            if scanResult(cell_no) ~= -1
-                imac_grid(cell_no).update(scanResult(cell_no));
-            else
-                imac_grid(cell_no).updateProject();
-            end
         end
     end
+    % Update IMAC
+    for cell_no=2:size(scanResult,2)-1
+        if scanResult(cell_no) ~= -1
+            imac_grid(cell_no-1).update(scanResult(cell_no),0.16);
+            imac_grid(cell_no).update(scanResult(cell_no),0.68);
+            imac_grid(cell_no+1).update(scanResult(cell_no),0.16);
+        else
+            imac_grid(cell_no).updateProject();
+        end
+    end
+    cell_no = size(scanResult,2);
+    if scanResult(cell_no) ~= -1
+        imac_grid(cell_no-1).update(scanResult(cell_no),0.16);
+        imac_grid(cell_no).update(scanResult(cell_no),0.68);
+    end
+    
     %hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a
     a_data_hmm(t,:,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a;
     a_data_imac(t,:,:) = imac_grid(obstacles(obstacle_number_to_evaluate,1)).getTransitionMatrix();
@@ -141,7 +152,7 @@ plot(times(Imc_cell.no_of_initial_statistics_updates:plot_resolution:end),...
 hold on;
 plot([times(Imc_cell.no_of_initial_statistics_updates) times(end)], [obstacles(obstacle_number_to_evaluate,2) obstacles(obstacle_number_to_evaluate,2)]);
 hold off;
-ylim([0 1]);
+%ylim([0 1]);
 
 % figure('name','State probabilites')
 % subplot(1,2,1),plot(times(1:10:end), q_data(1:10:end,1)); title('p(free)'); ylim([0 1]);

@@ -27,19 +27,19 @@ classdef Imc_cell < handle
             obj.unknown_since_last_obs = 0;
             obj.t = 0;
         end
-        function [] = update(obj, yt)
+        function [] = update(obj, yt, weight)
             % update estimate
             if yt == obj.OCCUPIED
-                obj.obs_occ = obj.obs_occ + 1;
+                obj.obs_occ = obj.obs_occ + weight;
                 % change ?
                 if obj.last_obs == obj.FREE
-                    obj.entry = obj.entry + 1;
+                    obj.entry = obj.entry + weight;
                 end
             else
-                obj.obs_free = obj.obs_free + 1;
+                obj.obs_free = obj.obs_free + weight;
                 % change ?
                 if obj.last_obs == obj.OCCUPIED
-                    obj.release = obj.release + 1;
+                    obj.release = obj.release + weight;
                 end
             end
             
