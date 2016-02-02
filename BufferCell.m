@@ -21,7 +21,11 @@ classdef BufferCell < handle
         end
         
         function occPct = getOccupiedness(obj)
-           occPct = obj.occCnt / ( obj.occCnt + obj.freeCnt );
+            if(obj.occCnt + obj.freeCnt > 0)
+                occPct = obj.occCnt / ( obj.occCnt + obj.freeCnt );
+            else
+                occPct = -1;
+            end
            obj.occCnt = 0;
            obj.freeCnt = 0;
         end
