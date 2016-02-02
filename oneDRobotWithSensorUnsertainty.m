@@ -89,11 +89,13 @@ for t= times
     
     % Put scan into method
     for cell_no=1:size(scanResult,2)
-        if cell_no == obstacles(1,1)
+        if cell_no == obstacles(1,1) || cell_no == obstacles(1,1) - 1 || cell_no == obstacles(1,1) + 1
             hmm_grid(cell_no).update(scanResult(cell_no));
+            %imac_grid(cell_no-1).update(scanResult(cell_no),1);
         end
     end
-    % Update IMAC
+    
+%     % Update IMAC
     for cell_no=2:size(scanResult,2)-1
         if scanResult(cell_no) ~= -1
             imac_grid(cell_no-1).update(scanResult(cell_no),0.16);
