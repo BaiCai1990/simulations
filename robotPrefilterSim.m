@@ -14,8 +14,8 @@ variance = 0.5; % in grid cells
 robotStepSize = 0;
 
 % Obstacles
-obstacle1 = [6,0.3,0.49]; % pos, free->occ, occ->free
-obstacle2 = [3,0.9,0.1];
+obstacle1 = [6,0.5,0.5]; % pos, free->occ, occ->free
+obstacle2 = [3,0.5,0.5];
 
 obstacles = [obstacle1; obstacle2];
 
