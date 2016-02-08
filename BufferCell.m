@@ -4,6 +4,7 @@ classdef BufferCell < handle
     
     properties
         occCnt, freeCnt;
+        isUpdated;
     end
     
     methods
@@ -13,6 +14,7 @@ classdef BufferCell < handle
         end
         
         function [] = addMeasurement(obj, m, w)
+            obj.isUpdated = true;
            if(m == 0)
                obj.freeCnt = obj.freeCnt + 1 * w;
            elseif(m == 1)
@@ -28,6 +30,10 @@ classdef BufferCell < handle
             end
            obj.occCnt = 0;
            obj.freeCnt = 0;
+        end
+        
+        function [] = reset(obj)
+           obj.isUpdated = false;            
         end
     end
     

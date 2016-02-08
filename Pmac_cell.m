@@ -6,6 +6,8 @@ classdef Pmac_cell < handle
         recency_weightning = 2000/2001;
         OCCUPIED = 1, FREE = 0;
         no_of_initial_statistics_updates = 100;
+        T_MAX = 10000;
+        BETA = 0.9;
     end
     
     properties
@@ -14,8 +16,8 @@ classdef Pmac_cell < handle
         entry; % free -> occupied
         last_obs;
         unknown_since_last_obs;
-        t;
         last_prob_occ;
+        last_update_t;
     end
     
     methods
@@ -26,13 +28,17 @@ classdef Pmac_cell < handle
             obj.entry = 0;
             obj.last_obs = 0;
             obj.unknown_since_last_obs = 0;
-            obj.t = 0;
             obj.last_prob_occ = 0.5;
+            obj.last_update_t = 0;
         end
-        function [] = update(obj, prob_occ)
+        function [] = update(obj, prob_occ, t)
             if(prob_occ >= 0)
-                % update estimate'
                 yt = prob_occ > 0.5;
+                delta_t = t - obj.last_update_t;
+                alpha = obj.BETA * min([delta_t, obj.T_MAX]) / obj.T_MAX;
+                prob_occ = (1-alpha)*obj.last_prob_occ + prob_occ*alpha;
+                obj.last_update_t = t;
+                % update estimate'                
                 prob_free = (1 - prob_occ);
                 if yt == 1 % occupied cell
                     obj.obs_occ = obj.obs_occ + prob_occ;
@@ -40,34 +46,36 @@ classdef Pmac_cell < handle
                     if obj.last_obs  == 0
                         last_prob_free = 1 - obj.last_prob_occ;
                         %obj.entry = obj.entry + (last_prob_free - prob_free);
-                        obj.entry = obj.entry + (last_prob_free );
+                        obj.entry = obj.entry + last_prob_free;
                     end
                 else
                     obj.obs_free = obj.obs_free + prob_free;
                     % change ?
                     if obj.last_obs  == 1
                         %obj.release = obj.release + (obj.last_prob_occ - prob_occ);
-                        obj.release = obj.release + (obj.last_prob_occ );
+                        obj.release = obj.release + obj.last_prob_occ;
                     end
                 end            
                 % recency weightning
-                if yt == obj.OCCUPIED
-                    % update active state
-                    if obj.obs_occ > obj.max_N
-                        obj.release = obj.release * obj.max_N / obj.obs_occ;
-                    end
-                    % update inactive state
-                    obj.entry = 1 + (obj.entry - 1) * obj.recency_weightning;
-                    obj.obs_free = 1 + (obj.obs_free - 1) * obj.recency_weightning;
-                else
-                    % update active state
-                    if obj.obs_free > obj.max_N
-                        obj.entry = obj.entry * obj.max_N / obj.obs_free;
-                    end
-                    % update inactive state
-                    obj.release = 1 + (obj.release - 1) * obj.recency_weightning;
-                    obj.obs_occ = 1 + (obj.obs_occ - 1) * obj.recency_weightning;
-                end
+%                 if yt == obj.OCCUPIED
+%                     % update active state
+%                     if obj.obs_occ > obj.max_N
+%                         obj.release = obj.release * obj.max_N / obj.obs_occ;
+%                         obj.obs_occ = obj.max_N;                        
+%                     end
+%                     % update inactive state
+%                     obj.entry = 1 + (obj.entry - 1) * obj.recency_weightning;
+%                     obj.obs_free = 1 + (obj.obs_free - 1) * obj.recency_weightning;
+%                 else
+%                     % update active state
+%                     if obj.obs_free > obj.max_N                        
+%                         obj.entry = obj.entry * obj.max_N / obj.obs_free;
+%                         obj.obs_free = obj.max_N;
+%                     end
+%                     % update inactive state
+%                     obj.release = 1 + (obj.release - 1) * obj.recency_weightning;
+%                     obj.obs_occ = 1 + (obj.obs_occ - 1) * obj.recency_weightning;
+%                 end
 
                 obj.unknown_since_last_obs = 0;
 

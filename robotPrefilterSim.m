@@ -32,10 +32,11 @@ N = 1e4;
 
 % store data for visualization of learning progress
 a_data_imac(1:N,1:2,1:2) = -1;
-q_data(1:N,1:Hmm_EM_cell.N) = -1;
+q_data(1:N) = -1;
+last_prob(1:N) = -1;
 obstacle_number_to_evaluate = 1;
 times = 1:N;
-imac_update_interval = 100;
+imac_update_interval = 1;
 prev_t = 0;
 %%
 % simulation of robot movements
@@ -75,7 +76,7 @@ for t= times
         buffer_grid(cell_no).addMeasurement(scanResult(cell_no),0.68);
     end
     
-    if mod(t, imac_update_interval / 100) == 0
+    if mod(t, 5000) == 0
         if(obstacles(1,1) ~= robot)
             % Sample Bernoulli random variable
             rn = rand(1);
@@ -84,14 +85,8 @@ for t= times
             end
         end
     end
-    
-    if (t - prev_t) >= imac_update_interval
-        prev_t = t;
-        % Update IMAC
-        for cell_no=1:size(buffer_grid,2)
-            imac_grid(cell_no).update(buffer_grid(cell_no).getOccupiedness());
-        end
-        % Update obstacles
+    if mod(t, 10000) == 0
+            % Update obstacles
         if(obstacles(1,1) ~= robot)
             % Sample Bernoulli random variable
             rn = rand(1);
@@ -100,7 +95,26 @@ for t= times
             end
         end
     end
+    
+    if (t - prev_t) >= imac_update_interval
+        prev_t = t;
+        % Update IMAC
+        for cell_no=1:size(buffer_grid,2)
+            occupied_ness = buffer_grid(cell_no).getOccupiedness();
+            if buffer_grid(cell_no).isUpdated                
+                imac_grid(cell_no).update(occupied_ness, t);
+            end
+            if(cell_no == obstacles(obstacle_number_to_evaluate,1))
+                q_data(t) = occupied_ness;
+                last_prob(t) = imac_grid(cell_no).last_prob_occ;
+            end
+            buffer_grid(cell_no).reset();            
+        end
+    end
     a_data_imac(t,:,:) = imac_grid(obstacles(obstacle_number_to_evaluate,1)).getTransitionMatrix();
+    if mod(t, N / 10) == 0
+        procent_gone = t/N * 100
+    end
 end
 
 %% Display learning results
@@ -148,7 +162,11 @@ legend(['Static prob.'; '        IMAC'], 'location', 'southoutside');
 % figure;
 % bar([ideal_long_term; occupancy_hmm_est; occupancy_imac_est]');
 % legend(['Static prob.';'         HMM'; '        IMAC']);
-
+figure;
+plot(times,q_data);
+hold on;
+plot(times, last_prob);
+hold off;
 %% Quatify difference in occupancy maps
 % hmm_divergence = kullbackDivergence(ideal_long_term, occupancy_hmm_est)
 % imac_divergence = kullbackDivergence(ideal_long_term, occupancy_imac_est)
