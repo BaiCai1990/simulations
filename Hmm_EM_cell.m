@@ -17,10 +17,15 @@ classdef Hmm_EM_cell < handle
     methods
         function obj =  Hmm_EM_cell(initial_prob, discount_factor, p_mess)
             obj.discount_factor = discount_factor; % 1e-3;
-            obj.a(1,1) = rand(1);
-            obj.a(1,2) = 1 - obj.a(1,1);
-            obj.a(2,2) = rand(1);
-            obj.a(2,1) = 1 - obj.a(2,2);
+%             obj.a(1,1) = rand(1);
+%             obj.a(1,2) = 1 - obj.a(1,1);
+%             obj.a(2,2) = rand(1);
+%             obj.a(2,1) = 1 - obj.a(2,2);
+            obj.a(1,2) = 0.5;
+            obj.a(1,1) = 1 - obj.a(1,2);
+            obj.a(2,1) = 0.5;
+            obj.a(2,2) = 1 - obj.a(2,1);            
+            initial_a = obj.a
             obj.b = [p_mess 1-p_mess 0.5; 1-p_mess p_mess 0.5;];
             % initial state probability
             obj.q = initial_prob; % [0.05 0.95];

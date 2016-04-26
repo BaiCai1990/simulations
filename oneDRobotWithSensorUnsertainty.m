@@ -2,59 +2,55 @@
 clear all;
 import Hmm_EM_cell
 import Imc_cell
+import Pmac_cell
+import Probabilistic_cell
 L = 10; % Map size
 map(1:L) = 0;
 robot = 1;
-
+rng('shuffle');
 % Sensor
 range = 9;
-variance = 0.5; % in grid cells
+variance = 1.0; % in grid cells
 
 % Robot step size
 robotStepSize = 0;
 
 % Obstacles
-obstacle1 = [6,0.9,0.2]; % pos, free->occ, occ->free
+obstacle1 = [6,0.4,0.7]; % pos,free->occ, occ->free,
 obstacle2 = [2,0.45,0.5];
 
 obstacles = [obstacle1;];% obstacle2];
 
 % init learning models
-for cell_no=1:L
-    hmm_grid(cell_no) = Hmm_EM_cell([0.5 0.5], 5e-4, 0.68);
-end
-
-for cell_no=1:L
-    imac_grid(cell_no) = Imc_cell();
-end
-
-N = 5e4;
-
+p_measurement = 0.191*2;
+%p_measurement = 0.68;
+hmm_grid(1:L) = Hmm_EM_cell([0.5 0.5], 1e-2, p_measurement);
+imac_grid(1:L) = Imc_cell();
+pmac_grid(1:L) = Pmac_cell(p_measurement,(1-p_measurement));
+filter_grid(1:L) = Probabilistic_cell();
+markov_time = 60;
+N = markov_time*1000;
+%N=300;
 % store data for visualization of learning progress
-a_data_hmm(1:N,1:Hmm_EM_cell.N,1:Hmm_EM_cell.N) = -1;
-a_data_imac(1:N,1:2,1:2) = -1;
-q_data(1:N,1:Hmm_EM_cell.N) = -1;
+
+a_data_hmm(1:N/markov_time,1:Hmm_EM_cell.N,1:Hmm_EM_cell.N) = -1;
+a_data_imac(1:N/markov_time,1:2,1:2) = -1;
+a_data_pmac(1:N/markov_time,1:2,1:2) = -1;
+%q_data(1:N,1:Hmm_EM_cell.N) = -1;
 obstacle_number_to_evaluate = 1;
 occupied_count(1:L) = 0;
+free_count = occupied_count;
 times = 1:N;
+
+observations(N/markov_time+1) = 0;
+obstacle_apearent = observations;
+learner_update_count = 0;
 %%
 % simulation of robot movements
 for t= times
-    % Update obstacles
-    for i=1:size(obstacles,1)
-        if(obstacles(i,1) ~= robot)
-            % Sample Bernoulli random variable
-            rn = rand(1);
-            if(rn <= obstacles(i,map(obstacles(i,1))+2))
-                map(obstacles(i,1)) = xor(map(obstacles(i,1)),1);
-            end
-        end
+    if(mod(t,N/10) == 0)
+        t/N*100
     end
-    % count no. of occ. and free to use for groud truth
-    %     for i=1:L
-    %         occupied_count(i) = occupied_count(i) + map(i);
-    %     end
-    
     % Take measurement
     correct_dist = range + robot;
     for z=1:range;
@@ -65,119 +61,108 @@ for t= times
     end
     measured_dist = round(normrnd(correct_dist,variance));
     scanResult(1:L) = -1; % -1 = Unseen, 0 = Free, 1 = Occupied
-    if measured_dist > robot + range 
+    if measured_dist > robot + range
         scanResult(robot+1:robot + range) = 0;
     else
         scanResult(robot+1:measured_dist-1) = 0;
         scanResult(measured_dist) = 1;
     end
-    
-    % Move bot
-    %     for step=1:robotStepSize
-    %         %nextRobotPos = mod(robot+step,L+1);
-    %         nextRobotPos = robot + 1;
-    %         if nextRobotPos > L
-    %             nextRobotPos = 1;
-    %         end
-    %         % Check for obstacles
-    %         if(map(nextRobotPos) ~= 1 )
-    %             robot = nextRobotPos;
-    %         else
-    %             break;
-    %         end
-    %     end
-    
-    % Put scan into method
+    % Add measurement to filter
     for cell_no=1:size(scanResult,2)
         if cell_no == obstacles(1,1)
-            hmm_grid(cell_no).update(scanResult(cell_no));
             if scanResult(cell_no) ~= -1
-                imac_grid(cell_no).update(scanResult(cell_no));
-            else
-                imac_grid(cell_no).updateProject();
+                filter_grid(cell_no).update(scanResult(cell_no));
             end
         end
     end
-    %hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a
-    a_data_hmm(t,:,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a;
-    a_data_imac(t,:,:) = imac_grid(obstacles(obstacle_number_to_evaluate,1)).getTransitionMatrix();
-    q_data(t,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).q;
+    
+    if(mod(t,markov_time) == 0)
+%         filter_val(1:length(filter_grid)) = 0;
+%         for i=1:length(filter_grid)
+%             filter_val(i) = filter_grid(i).getOccupancy_prob();
+%         end    
+%         figure(1),bar(filter_val);
+        learner_update_count = learner_update_count + 1;
+        % Put filtered data into method
+        for cell_no=1:size(scanResult,2)
+            if cell_no == obstacles(1,1)                
+                occ_prob = filter_grid(cell_no).getOccupancy_prob();
+                if scanResult(cell_no) ~= 0.5
+                    if(occ_prob > 0.5)
+                        imac_grid(cell_no).update(1);
+                    else
+                        imac_grid(cell_no).update(0);
+                    end
+                    pmac_grid(cell_no).update(occ_prob);
+                    observations(learner_update_count) = occ_prob;
+                    obstacle_apearent(learner_update_count) = map(obstacles(1,1));
+                    %                     if(scanResult(cell_no) == 1)
+                    %                         occupied_count(cell_no) = occupied_count(cell_no) + 1;
+                    %                     else
+                    %                         free_count(cell_no) = free_count(cell_no) + 1;
+                    %                     end
+                end
+            end
+        end
+        
+        % Update obstacles
+        for i=1:size(obstacles,1)
+            if(obstacles(i,1) ~= robot)
+                % Sample Bernoulli random variable
+                rn = rand(1);
+                if( rn <= obstacles(i,map(obstacles(i,1))+2) )
+                    map(obstacles(i,1)) = xor(map(obstacles(i,1)),1);
+                end
+            end
+        end
+        
+        %hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a
+        %     a_data_hmm(t,:,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a;
+        a_data_pmac(learner_update_count,:,:) = pmac_grid(obstacles(obstacle_number_to_evaluate,1)).getTransitionMatrix();
+        a_data_imac(learner_update_count,:,:) = imac_grid(obstacles(obstacle_number_to_evaluate,1)).getTransitionMatrix();
+        %q_data(t,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).q;
+    end
+    
+    
 end
 
 %% Display learning results
+update_indexes = 1:length(a_data_imac);
 close all;
 plot_resolution = 1;
 f = figure('name','State transition probabilities HMM');
 movegui(f,'northwest');
-subplot(1,2,1),
-plot(times(Hmm_EM_cell.no_of_initial_statistics_updates:plot_resolution:end),...
-    a_data_hmm(Hmm_EM_cell.no_of_initial_statistics_updates:plot_resolution:end,1,2));title('a(1,2) occupied -> free ')
+% p1 = plot(times(Hmm_EM_cell.no_of_initial_statistics_updates:plot_resolution:end),...
+%     a_data_hmm(Hmm_EM_cell.no_of_initial_statistics_updates:plot_resolution:end,1,2));%title('a(1,2) occupied -> free ')
+% hold on;
+% p2 = plot([times(Hmm_EM_cell.no_of_initial_statistics_updates) times(end)], [obstacles(obstacle_number_to_evaluate,3) obstacles(obstacle_number_to_evaluate,3)]);
+
+p3 = plot(update_indexes(Imc_cell.no_of_initial_statistics_updates:plot_resolution:end),...
+    a_data_imac(Imc_cell.no_of_initial_statistics_updates:plot_resolution:end,1,2));%title('a(1,2) occupied -> free')
+%hold on;
 hold on;
-plot([times(Hmm_EM_cell.no_of_initial_statistics_updates) times(end)], [obstacles(obstacle_number_to_evaluate,3) obstacles(obstacle_number_to_evaluate,3)]);
-hold off;
+plot(update_indexes(Pmac_cell.no_of_initial_statistics_updates:plot_resolution:end),...
+    a_data_pmac(Pmac_cell.no_of_initial_statistics_updates:plot_resolution:end,1,2));title('a(1,2) occupied -> free')
+%
+plot([update_indexes(Pmac_cell.no_of_initial_statistics_updates) update_indexes(end)], [obstacles(obstacle_number_to_evaluate,3) obstacles(obstacle_number_to_evaluate,3)]);
 ylim([0 1]);
-
-subplot(1,2,2),
-plot(times(Hmm_EM_cell.no_of_initial_statistics_updates:plot_resolution:end),...
-    a_data_hmm(Hmm_EM_cell.no_of_initial_statistics_updates:plot_resolution:end,2,1));title('a(2,1) free -> occupied')
+xlabel('Used observations');
+ylabel('P_{exit}');
+% legend([p2 p3 p1],['Static prob.';'        IMAC';'  HMM-online';], 'location', 'southoutside');
+figure;
+% p1 = plot(times(Hmm_EM_cell.no_of_initial_statistics_updates:plot_resolution:end),...
+%     a_data_hmm(Hmm_EM_cell.no_of_initial_statistics_updates:plot_resolution:end,2,1));%title('a(2,1) free -> occupied')
+% hold on;
+% p2 = plot([times(Hmm_EM_cell.no_of_initial_statistics_updates) times(end)], [obstacles(obstacle_number_to_evaluate,2) obstacles(obstacle_number_to_evaluate,2)]);
+p3 = plot(update_indexes(Imc_cell.no_of_initial_statistics_updates:plot_resolution:end),...
+    a_data_imac(Imc_cell.no_of_initial_statistics_updates:plot_resolution:end,2,1));%title('a(2,1) free -> occupied')
 hold on;
-plot([times(Hmm_EM_cell.no_of_initial_statistics_updates) times(end)], [obstacles(obstacle_number_to_evaluate,2) obstacles(obstacle_number_to_evaluate,2)]);
-hold off;
+plot(update_indexes(Pmac_cell.no_of_initial_statistics_updates:plot_resolution:end),...
+    a_data_pmac(Pmac_cell.no_of_initial_statistics_updates:plot_resolution:end,2,1));title('a(2,1) free -> occupied')
+plot([update_indexes(Pmac_cell.no_of_initial_statistics_updates) update_indexes(end)], [obstacles(obstacle_number_to_evaluate,2) obstacles(obstacle_number_to_evaluate,2)]);
 ylim([0 1]);
-
-f = figure('name','State transition probabilities IMAC');
-movegui(f,'southwest');
-subplot(1,2,1),
-plot(times(Imc_cell.no_of_initial_statistics_updates:plot_resolution:end),...
-    a_data_imac(Imc_cell.no_of_initial_statistics_updates:plot_resolution:end,1,2));title('a(1,2) occupied -> free')
-hold on;
-plot([times(Imc_cell.no_of_initial_statistics_updates) times(end)], [obstacles(obstacle_number_to_evaluate,3) obstacles(obstacle_number_to_evaluate,3)]);
-hold off;
-ylim([0 1]);
-
-subplot(1,2,2),
-plot(times(Imc_cell.no_of_initial_statistics_updates:plot_resolution:end),...
-    a_data_imac(Imc_cell.no_of_initial_statistics_updates:plot_resolution:end,2,1));title('a(2,1) free -> occupied')
-hold on;
-plot([times(Imc_cell.no_of_initial_statistics_updates) times(end)], [obstacles(obstacle_number_to_evaluate,2) obstacles(obstacle_number_to_evaluate,2)]);
-hold off;
-ylim([0 1]);
-
-% figure('name','State probabilites')
-% subplot(1,2,1),plot(times(1:10:end), q_data(1:10:end,1)); title('p(free)'); ylim([0 1]);
-% subplot(1,2,2),plot(times(1:10:end), q_data(1:10:end,2)); title('p(occupied)'); ylim([0 1]);
-
-f = figure('name', 'Estimated occupancy probabilities');
-movegui(f,'east');
-occupancy_hmm_est(1:L) = 0;
-occupancy_imac_est(1:L) = 0;
-occupancy_groud_truth(1:L) = 0;
-for cell_no=1:L
-    q_est =  hmm_grid(cell_no).longOccupancy();
-    occupancy_hmm_est(cell_no) =q_est(1);
-    q_est = imac_grid(cell_no).longOccupancy();
-    occupancy_imac_est(cell_no) = q_est(1);
-    occupancy_groud_truth(cell_no) = occupied_count(cell_no) / N;
-end
-
-ideal_long_term(1:L) = 0;
-for i=1:size(obstacles,1)
-    q_est = 1.0 / (obstacles(i,2) + obstacles(i,3)) * [obstacles(i,2)  obstacles(i,3)];
-    ideal_long_term(obstacles(i,1)) = q_est(1);
-end
-clear q_est;
-
-bar(1:L,ideal_long_term,0.95,'FaceColor',[1 0. 0.]);
-hold on
-bar(1:L,occupancy_hmm_est,.75);
-bar(1:L, occupancy_imac_est,0.5,'FaceColor',[0 0.7 0.7]);
-% bar(1:L,occupancy_groud_truth,0.25,'FaceColor',[0 1 0]);
-hold off
-legend(['Static prob.';'         HMM'; '        IMAC'], 'location', 'southoutside');
-% figure;
-% bar([ideal_long_term; occupancy_hmm_est; occupancy_imac_est]');
-% legend(['Static prob.';'         HMM'; '        IMAC']);
-
-%% Quatify difference in occupancy maps
-% hmm_divergence = kullbackDivergence(ideal_long_term, occupancy_hmm_est)
-% imac_divergence = kullbackDivergence(ideal_long_term, occupancy_imac_est)
+xlabel('Used observations');
+ylabel('P_{entry}');
+figure, plot(observations);
+figure,plot(abs(observations-obstacle_apearent))
+% legend([p2 p3 p1],['Static prob.';'        IMAC';'  HMM-online'], 'location', 'southoutside');

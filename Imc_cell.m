@@ -44,23 +44,23 @@ classdef Imc_cell < handle
             end
             
             % recency weightning
-            if yt == obj.OCCUPIED
-                % update active state
-                if obj.obs_occ > obj.max_N
-                    obj.release = obj.release * obj.max_N / obj.obs_occ;
-                end
-                % update inactive state
-                obj.entry = 1 + (obj.entry - 1) * obj.recency_weightning;
-                obj.obs_free = 1 + (obj.obs_free - 1) * obj.recency_weightning;
-            else
-                % update active state
-                if obj.obs_free > obj.max_N
-                    obj.entry = obj.entry * obj.max_N / obj.obs_free;
-                end
-                % update inactive state
-                obj.release = 1 + (obj.release - 1) * obj.recency_weightning;
-                obj.obs_occ = 1 + (obj.obs_occ - 1) * obj.recency_weightning;
-            end
+%             if yt == obj.OCCUPIED
+%                 % update active state
+%                 if obj.obs_occ > obj.max_N
+%                     obj.release = obj.release * obj.max_N / obj.obs_occ;
+%                 end
+%                 % update inactive state
+%                 obj.entry = 1 + (obj.entry - 1) * obj.recency_weightning;
+%                 obj.obs_free = 1 + (obj.obs_free - 1) * obj.recency_weightning;
+%             else
+%                 % update active state
+%                 if obj.obs_free > obj.max_N
+%                     obj.entry = obj.entry * obj.max_N / obj.obs_free;
+%                 end
+%                 % update inactive state
+%                 obj.release = 1 + (obj.release - 1) * obj.recency_weightning;
+%                 obj.obs_occ = 1 + (obj.obs_occ - 1) * obj.recency_weightning;
+%             end
             
             obj.unknown_since_last_obs = 0;
             
@@ -118,9 +118,9 @@ classdef Imc_cell < handle
         
         function [q_est] = projectOccupancy(obj, steps)
             a = obj.getTransitionMatrix();
-            q_est = 0;
+            q_est = [0.5 0.5];
             for i=1:steps
-                q_est = obj.q * a;
+                q_est = q_est * a;
             end
         end
     end
