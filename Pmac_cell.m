@@ -15,15 +15,13 @@ classdef Pmac_cell < handle
         last_obs;
         unknown_since_last_obs;
         t;
-        p_occ;
-        p_free;
         prev_state_score;
         occ_before, free_after;
         free_before, occ_after;
     end
     
     methods
-        function obj = Pmac_cell(p_occ,p_free)
+        function obj = Pmac_cell()
             obj.obs_occ = 0;
             obj.obs_free = 0;
             obj.release = 0;
@@ -31,22 +29,19 @@ classdef Pmac_cell < handle
             obj.last_obs = 0;
             obj.unknown_since_last_obs = 0;
             obj.t = 0;
-            obj.p_occ = p_occ;
-            obj.p_free = p_free;
             obj.prev_state_score = 0;
-            
             obj.occ_before=0;
             obj.free_after=0;
             obj.free_before=0;
             obj.occ_after=0;
         end
-        function [] = update(obj, yt)
-            occ_prob=yt;
-%             if(yt == obj.OCCUPIED)
-%                 occ_prob = obj.p_occ;
-%             else
-%                 occ_prob = obj.p_free;
-%             end
+        function [] = update(obj, yt, measurement_prob)
+            %occ_prob = yt;
+            if(yt > 0.5)
+                occ_prob = measurement_prob;
+            else
+                occ_prob = 1-measurement_prob;
+            end
             
             if(occ_prob > 0.5)
                 occ_score = (occ_prob-0.5)*2;
@@ -54,15 +49,8 @@ classdef Pmac_cell < handle
                 if(obj.last_obs < 0.5)
                     obj.release = obj.release + min([obj.occ_before,obj.free_after,1]);
                     %obj.entry = obj.entry + obj.prev_state_score;%min(occ_score, obj.prev_state_score);
-%                     if min([obj.occ_before,obj.free_after,1]) < 0.1
-%                        obj.occ_before
-%                        obj.free_after
-%                     end
                     obj.occ_before = 0.0;
                     obj.free_after = 0.0;
-                end
-                if(occ_score == 0.0)
-                   occ_score 
                 end
                 obj.occ_after = obj.occ_after + occ_score;
                 obj.occ_before = obj.occ_before + occ_score;
