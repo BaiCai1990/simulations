@@ -63,7 +63,7 @@ for p_entry = 0.1:0.1:0.9
                 if scanResult(cell_no) ~= -1
                     imac_grid(cell_no).update(scanResult(cell_no));
                     p = normcdf([-0.5 0.5],0,variance);
-                    pmac_grid(cell_no).update(scanResult(cell_no), p(2) - p(1));
+                    pmac_grid(cell_no).update(p(2) - p(1));
                 end
                 
                 % Update obstacles
@@ -74,12 +74,8 @@ for p_entry = 0.1:0.1:0.9
                         map(obstacle1(1)) = xor(map(obstacle1(1)),1);
                     end
                 end
-                
-                %hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a
-                %     a_data_hmm(t,:,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).a;
                 a_data_pmac(learner_update_count,:,:) = pmac_grid(obstacle1(1)).getTransitionMatrix();
                 a_data_imac(learner_update_count,:,:) = imac_grid(obstacle1(1)).getTransitionMatrix();
-                %q_data(t,:) = hmm_grid(obstacles(obstacle_number_to_evaluate,1)).q;
             end
             
             %% store estimation errors

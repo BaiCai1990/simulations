@@ -93,6 +93,7 @@ classdef Hmm_EM_cell < handle
         
         function [q_est] = estimateOccupancy(obj)
            q_est = [0.5 0.5] * obj.a;
+           q_est = obj.q;
         end
         
         function [q_est] = longOccupancy(obj)

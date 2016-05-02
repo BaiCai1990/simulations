@@ -22,9 +22,11 @@ classdef Probabilistic_cell < handle
             end
         end
         
-        function occ_prob = getOccupancy_prob(obj)
+        function occ_prob = getOccupancy_prob(obj,reset)
             occ_prob = 1 - 1/(1+exp(obj.log_odds));
-            obj.log_odds = 0.0;
+            if(reset)
+                obj.log_odds = 0.0; 
+            end
         end
     end
     

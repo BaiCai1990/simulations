@@ -3,7 +3,7 @@ clear all;
 close all;
 occ_probs = [.7, .8, 0.75, 0.9, .45, .4, 0.85, .7, .65,.95, .8, 0.3, .2, .1, .15, .25, .9, .8,0.85, 0.9];
 % Problem case: small error results in under estimating dynamics
-%occ_probs = [.7, .8, 0.75, 0.9, .499, 0.501, 0.3, .2, .1, .15, .25];
+occ_probs = [.7, .8, 0.75, 0.9, .499, 0.501, 0.3, .2, .1, .15, .25];
 num_of_plots = 8;
 plot_xlim = length(occ_probs) + 1;
 figure;
@@ -23,15 +23,15 @@ subplot(2,1,2),bar(occ_scores, 'BarWidth', 0.5); ylabel('state score'); xlim([0 
 hold on;
 bar(free_scores,'FaceColor', [0.850,  0.325,  0.098],'BarWidth', 0.5);
 % add average
-means = [mean(scores(1:4)) mean(scores(5:6)) mean(scores(7:11)) mean(scores(12:16)) mean(scores(17:end))];
-for i=1:length(means)
-    mean_values(1:2,i) = means(i);
-end
-mean_indexes = [[1,4]; [5,6]; [7,11]; [12,16]; [17,length(occ_probs)]]';
-ax = plot(mean_indexes, mean_values,'Color', [0.466,  0.674,  0.188]); % 
-legend(ax,'average score between state changes', 'location', 'SouthWest');
-xlabel('Update index');
-hold off;
+% means = [mean(scores(1:4)) mean(scores(5:6)) mean(scores(7:11)) mean(scores(12:16)) mean(scores(17:end))];
+% for i=1:length(means)
+%     mean_values(1:2,i) = means(i);
+% end
+% mean_indexes = [[1,4]; [5,6]; [7,11]; [12,16]; [17,length(occ_probs)]]';
+% ax = plot(mean_indexes, mean_values,'Color', [0.466,  0.674,  0.188]); % 
+% legend(ax,'average score between state changes', 'location', 'SouthWest');
+% xlabel('Update index');
+% hold off;
 
 entry = realmin('double'); exit = entry; 
 free_count = exit; occupied_count = free_count;
@@ -45,8 +45,8 @@ for i=1:length(occ_probs)
         occupied_count = occupied_count + occupied_prob;
         % occ state
         if(prev_occ_prob < 0.5)
-            last_exit_residue = 0;
-            last_exit_cnt = 0;
+%             last_exit_residue = 0;
+%             last_exit_cnt = 0;
             last_entry_residue = last_entry_residue / last_entry_cnt;
         end
         last_exit_cnt = last_exit_cnt + 1;
@@ -58,14 +58,17 @@ for i=1:length(occ_probs)
             next_entry_cnt = min(occupied_prob,last_entry_residue);
             entry = entry + next_entry_cnt;
             last_entry_residue = last_entry_residue - next_entry_cnt;
+            if(last_entry_cnt > 1)
+                last_entry_cnt = last_entry_cnt - 1;
+            end
         end
     else
         free_prob = (0.5 - occ_prob) * 2;
         free_count = free_count + free_prob;
         
         if(prev_occ_prob > 0.5)
-            last_entry_residue = 0;
-            last_entry_cnt = 0;
+%             last_entry_residue = 0;
+%             last_entry_cnt = 0;
             last_exit_residue = last_exit_residue / last_exit_cnt;
         end
         last_entry_cnt = last_entry_cnt + 1;
@@ -76,6 +79,9 @@ for i=1:length(occ_probs)
             next_exit_cnt = min(free_prob,last_exit_residue);
             exit = exit + next_exit_cnt;
             last_exit_residue = last_exit_residue - next_exit_cnt;
+            if(last_exit_cnt > 1)
+                last_exit_cnt = last_exit_cnt - 1;
+            end
         end
     end
     prev_occ_prob = occ_prob;
@@ -83,8 +89,8 @@ for i=1:length(occ_probs)
     free_counts(i) =  free_count;
     exits(i) = exit;
     entries(i) = entry;
-%     entry_res(i) = last_entry_residue;
-%     exit_res(i) = last_exit_residue;
+     entry_res(i) = last_entry_residue;
+     exit_res(i) = last_exit_residue;
 end
 figure;
 subplot(3,1,1), plot(free_counts); ylabel('free. sum'); hold on; plot(free_counts,'r.','MarkerSize',10); hold off; xlim([0 plot_xlim]);
@@ -97,5 +103,5 @@ subplot(3,1,2), plot(exits); ylabel('exit event sum'); hold on; plot(exits,'r.',
 subplot(3,1,3), plot(exits./occupied_counts); ylabel('\lambda_{exit}'); hold on; plot(exits./occupied_counts,'r.','MarkerSize',10); hold off; xlim([0 plot_xlim]);
 xlabel('Update index');
 %% Show workings of algorithm
-% figure;
-% plot([entry_res', exit_res']);
+ figure;
+ plot([entry_res', exit_res']);

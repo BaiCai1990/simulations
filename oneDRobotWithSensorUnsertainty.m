@@ -1,22 +1,22 @@
 %%
 clear all;
-import Hmm_EM_cell
+%import Hmm_EM_cell
 import Imc_cell
-import Pmac_cell
+import Pmac_cell2
 import Probabilistic_cell
-L = 10; % Map size
+L = 20; % Map size
 map(1:L) = 0;
 robot = 1;
 rng('shuffle');
 % Sensor
-range = 9;
-variance = 1.0; % in grid cells
+range = 19;
+variance = 2.0; % in grid cells
 
 % Robot step size
 robotStepSize = 0;
 
 % Obstacles
-obstacle1 = [6,0.4,0.7]; % pos,free->occ, occ->free,
+obstacle1 = [10,0.9,0.1]; % pos,free->occ, occ->free,
 obstacle2 = [2,0.45,0.5];
 
 obstacles = [obstacle1;];% obstacle2];
@@ -24,16 +24,19 @@ obstacles = [obstacle1;];% obstacle2];
 % init learning models
 p_measurement = 0.191*2;
 %p_measurement = 0.68;
-hmm_grid(1:L) = Hmm_EM_cell([0.5 0.5], 1e-2, p_measurement);
-imac_grid(1:L) = Imc_cell();
-pmac_grid(1:L) = Pmac_cell(p_measurement,(1-p_measurement));
-filter_grid(1:L) = Probabilistic_cell();
-markov_time = 60;
+for i=1:L
+  imac_grid(i) = Imc_cell();
+    pmac_grid(i) = Pmac_cell2();
+    filter_grid(i) = Probabilistic_cell();  
+end
+%hmm_grid(1:L) = Hmm_EM_cell([0.5 0.5], 1e-2, p_measurement);
+
+markov_time = 100;
 N = markov_time*1000;
 %N=300;
 % store data for visualization of learning progress
 
-a_data_hmm(1:N/markov_time,1:Hmm_EM_cell.N,1:Hmm_EM_cell.N) = -1;
+%a_data_hmm(1:N/markov_time,1:Hmm_EM_cell.N,1:Hmm_EM_cell.N) = -1;
 a_data_imac(1:N/markov_time,1:2,1:2) = -1;
 a_data_pmac(1:N/markov_time,1:2,1:2) = -1;
 %q_data(1:N,1:Hmm_EM_cell.N) = -1;
@@ -47,10 +50,14 @@ obstacle_apearent = observations;
 learner_update_count = 0;
 %%
 % simulation of robot movements
+max_std_dev = variance;
 for t= times
     if(mod(t,N/10) == 0)
         t/N*100
     end
+%     if(mod(t,100) == 0)
+%         variance = rand()*max_std_dev;
+%     end
     % Take measurement
     correct_dist = range + robot;
     for z=1:range;
@@ -69,25 +76,29 @@ for t= times
     end
     % Add measurement to filter
     for cell_no=1:size(scanResult,2)
-        if cell_no == obstacles(1,1)
+         if cell_no == obstacles(1,1)
             if scanResult(cell_no) ~= -1
                 filter_grid(cell_no).update(scanResult(cell_no));
             end
-        end
+          end
     end
     
     if(mod(t,markov_time) == 0)
-%         filter_val(1:length(filter_grid)) = 0;
-%         for i=1:length(filter_grid)
-%             filter_val(i) = filter_grid(i).getOccupancy_prob();
-%         end    
-%         figure(1),bar(filter_val);
         learner_update_count = learner_update_count + 1;
         % Put filtered data into method
         for cell_no=1:size(scanResult,2)
+            occ_prob = filter_grid(cell_no).getOccupancy_prob(false);
+%             if(abs(occ_prob- map(obstacles(1,1))) > 0.5)
+%                 hold off;
+%                 filter_val(1:length(filter_grid)) = 0;
+%                 for i=1:length(filter_grid)
+%                     filter_val(i) = filter_grid(i).getOccupancy_prob(false);
+%                 end
+%                 figure(1),bar(filter_val);
+%             end
             if cell_no == obstacles(1,1)                
-                occ_prob = filter_grid(cell_no).getOccupancy_prob();
-                if scanResult(cell_no) ~= 0.5
+                occ_prob = filter_grid(cell_no).getOccupancy_prob(true);
+                if occ_prob ~= 0.5
                     if(occ_prob > 0.5)
                         imac_grid(cell_no).update(1);
                     else
