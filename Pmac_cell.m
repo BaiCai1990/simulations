@@ -18,14 +18,15 @@ classdef Pmac_cell < handle
         prev_state_score;
         occ_before, free_after;
         free_before, occ_after;
+        occ_count, free_count;
     end
     
     methods
         function obj = Pmac_cell()
-            obj.obs_occ = 0;
-            obj.obs_free = 0;
-            obj.release = 0;
-            obj.entry = 0;
+            obj.obs_occ = realmin('double');
+            obj.obs_free = realmin('double');
+            obj.release = realmin('double');
+            obj.entry = realmin('double');
             obj.last_obs = 0;
             obj.unknown_since_last_obs = 0;
             obj.t = 0;
@@ -34,39 +35,38 @@ classdef Pmac_cell < handle
             obj.free_after=0;
             obj.free_before=0;
             obj.occ_after=0;
+            obj.occ_count = 0;
+            obj.free_count = 0;
         end
-        function [] = update(obj, yt, measurement_prob)
-            %occ_prob = yt;
-            if(yt > 0.5)
-                occ_prob = measurement_prob;
-            else
-                occ_prob = 1-measurement_prob;
-            end
-            
+        function [] = update(obj,occ_prob)         
             if(occ_prob > 0.5)
                 occ_score = (occ_prob-0.5)*2;
                 obj.obs_occ = obj.obs_occ + occ_score;
                 if(obj.last_obs < 0.5)
-                    obj.release = obj.release + min([obj.occ_before,obj.free_after,1]);
+                    obj.release = obj.release + min([obj.occ_before/obj.occ_count,obj.free_after,1]);
                     %obj.entry = obj.entry + obj.prev_state_score;%min(occ_score, obj.prev_state_score);
                     obj.occ_before = 0.0;
                     obj.free_after = 0.0;
+                    obj.occ_count = 0;
                 end
                 obj.occ_after = obj.occ_after + occ_score;
                 obj.occ_before = obj.occ_before + occ_score;
                 obj.prev_state_score = occ_score;
+                obj.occ_count = obj.occ_count + 1;
             else
                 free_score = ((1-occ_prob)-0.5)*2;
                 obj.obs_free = obj.obs_free + free_score;
                 if(obj.last_obs > 0.5)
-                    obj.entry = obj.entry + min([obj.free_before,obj.occ_after,1]);
+                    obj.entry = obj.entry + min([obj.free_before/obj.free_count,obj.occ_after,1]);
                     %obj.release = obj.release + obj.prev_state_score;%min(free_score, obj.prev_state_score);
                     obj.free_before = 0.0;
                     obj.occ_after = 0.0;
+                    obj.free_count = 0;
                 end
                 obj.free_after = obj.free_before + free_score;
                 obj.free_before = obj.free_before + free_score;
                 obj.prev_state_score = free_score;
+                obj.free_count = obj.free_count + 1;
             end
             obj.last_obs = occ_prob;
             
@@ -126,8 +126,8 @@ classdef Pmac_cell < handle
         end
         
         function a = getTransitionMatrix(obj)
-            lambda_entry = (obj.entry + 1) / (obj.obs_free + 1);
-            lambda_exit = (obj.release + 1) / (obj.obs_occ + 1);
+            lambda_entry = (obj.entry) / (obj.obs_free);
+            lambda_exit = (obj.release) / (obj.obs_occ);
             
             % correct for using mobile observer
             %             if (obj.obs_free + obj.obs_occ) > obj.no_of_initial_statistics_updates
