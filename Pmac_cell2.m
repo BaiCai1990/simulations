@@ -77,22 +77,6 @@ classdef Pmac_cell2 < handle
         function a = getTransitionMatrix(obj)
             lambda_entry = (obj.entry) / (obj.free_count);
             lambda_exit = (obj.exit) / (obj.occupied_count);
-            
-            % correct for using mobile observer
-            %             if (obj.obs_free + obj.obs_occ) > obj.no_of_initial_statistics_updates
-            %                 lambda_exit = sqrt(4*lambda_exit + 1) / 2 - 0.5;
-            %                 lambda_entry = -(lambda_exit * lambda_entry) / (lambda_entry - lambda_exit);
-            %
-            %                 if lambda_exit < 0 || lambda_entry < 0
-            % %                     lambda_entry = (obj.entry + 1) / (obj.obs_free + 1);
-            % %                     lambda_exit = (obj.release + 1) / (obj.obs_occ + 1);
-            %                     disp('underflow');
-            %                 elseif lambda_exit > 1 || lambda_entry > 1
-            % %                     lambda_entry = (obj.entry + 1) / (obj.obs_free + 1);
-            % %                     lambda_exit = (obj.release + 1) / (obj.obs_occ + 1);
-            %                     disp('overflow');
-            %                 end
-            %             end
             a(1:2,1:2) = [1-lambda_exit, lambda_exit; lambda_entry, 1-lambda_entry];
         end
     end
