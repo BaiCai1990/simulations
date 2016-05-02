@@ -28,8 +28,8 @@ classdef Pmac_cell2 < handle
             obj.free_count = 0;
             obj.last_entry_residue = 0;
             obj.last_exit_residue = 0;
-            obj.last_exit_cnt = 0;
-            obj.last_entry_cnt = 0;
+            obj.last_exit_cnt = realmin('double');
+            obj.last_entry_cnt = realmin('double');
         end
         
         function [] = update(obj,occ_prob)
