@@ -28,16 +28,19 @@ for i=1:length(means)
     mean_values(1:2,i) = means(i);
 end
 mean_indexes = [[1,4]; [5,6]; [7,11]; [12,16]; [17,length(occ_probs)]]';
-ax = plot(mean_indexes, mean_values,'Color', [0.466,  0.674,  0.188]); % 
+ax = plot(mean_indexes, mean_values,'Color', [0.466,  0.674,  0.188]); %
 legend(ax,'average score between state changes', 'location', 'SouthWest');
 xlabel('Update index');
 hold off;
 
-entry = realmin('double'); exit = entry; 
+entry = realmin('double'); exit = entry;
 free_count = exit; occupied_count = free_count;
 last_exit_residue = 0; last_entry_residue = 0;
-last_exit_cnt = 0; last_entry_cnt = 0;
+last_exit_cnt = realmin('double'); last_entry_cnt = realmin('double');
 prev_occ_prob = occ_probs(1);
+old_exit_residue = 0; old_entry_residue = 0;
+old_exit_cnt = realmin('double'); old_entry_cnt = realmin('double');
+
 for i=1:length(occ_probs)
     occ_prob = occ_probs(i);
     if(occ_prob > 0.5)
@@ -47,17 +50,28 @@ for i=1:length(occ_probs)
         if(prev_occ_prob < 0.5)
             last_exit_residue = 0;
             last_exit_cnt = 0;
-            last_entry_residue = last_entry_residue / last_entry_cnt;
+            old_entry_residue_avg = old_entry_residue / old_entry_cnt;
+            current_entry_residue_avg = last_entry_residue / last_entry_cnt;
+            if(current_entry_residue_avg > old_entry_residue_avg)
+                last_entry_residue = current_entry_residue_avg;
+                old_entry_residue = 0;
+                old_entry_cnt = 0;
+            else
+                last_entry_residue = old_entry_residue_avg;
+            end
         end
-        last_exit_cnt = last_exit_cnt + 1;
+        
         % start counting the exit max up
         last_exit_residue = last_exit_residue + occupied_prob;
-        
+        last_exit_cnt = last_exit_cnt + 1;
+        old_exit_residue = old_exit_residue + occupied_prob;
+        old_exit_cnt = old_exit_cnt + 1;
         % increment entry event
         if(last_entry_residue > 0.0)
             next_entry_cnt = min(occupied_prob,last_entry_residue);
             entry = entry + next_entry_cnt;
             last_entry_residue = last_entry_residue - next_entry_cnt;
+            old_entry_residue = old_entry_residue - next_entry_cnt;
         end
     else
         free_prob = (0.5 - occ_prob) * 2;
@@ -66,16 +80,25 @@ for i=1:length(occ_probs)
         if(prev_occ_prob > 0.5)
             last_entry_residue = 0;
             last_entry_cnt = 0;
-            last_exit_residue = last_exit_residue / last_exit_cnt;
+            old_exit_residue_avg = old_exit_residue / old_exit_cnt;
+            current_exit_residue_avg = last_exit_residue / last_exit_cnt;
+            if(current_exit_residue_avg > old_exit_residue_avg)
+                last_exit_residue = current_exit_residue_avg;
+                old_exit_residue = 0;
+                old_exit_cnt = 0;
+            else
+                last_exit_residue = old_exit_residue_avg;
+            end
         end
-        last_entry_cnt = last_entry_cnt + 1;
-        
         last_entry_residue = last_entry_residue + free_prob;
-        
+        last_entry_cnt = last_entry_cnt + 1;
+        old_entry_residue = old_entry_residue + free_prob;
+        old_entry_cnt = old_entry_cnt + 1;
         if(last_exit_residue > 0.0)
             next_exit_cnt = min(free_prob,last_exit_residue);
             exit = exit + next_exit_cnt;
             last_exit_residue = last_exit_residue - next_exit_cnt;
+            old_exit_residue = old_exit_residue - next_exit_cnt;
         end
     end
     prev_occ_prob = occ_prob;
@@ -83,8 +106,10 @@ for i=1:length(occ_probs)
     free_counts(i) =  free_count;
     exits(i) = exit;
     entries(i) = entry;
-%     entry_res(i) = last_entry_residue;
-%     exit_res(i) = last_exit_residue;
+    entry_res(i) = last_entry_residue;
+    exit_res(i) = last_exit_residue;
+    old_entry_res(i) = old_entry_residue;
+    old_exit_res(i) = old_exit_residue;
 end
 figure;
 subplot(3,1,1), plot(free_counts); ylabel('free. sum'); hold on; plot(free_counts,'r.','MarkerSize',10); hold off; xlim([0 plot_xlim]);
@@ -97,5 +122,6 @@ subplot(3,1,2), plot(exits); ylabel('exit event sum'); hold on; plot(exits,'r.',
 subplot(3,1,3), plot(exits./occupied_counts); ylabel('\lambda_{exit}'); hold on; plot(exits./occupied_counts,'r.','MarkerSize',10); hold off; xlim([0 plot_xlim]);
 xlabel('Update index');
 %% Show workings of algorithm
-% figure;
-% plot([entry_res', exit_res']);
+
+figure;
+plot([entry_res', exit_res', old_entry_res', old_exit_res']);
